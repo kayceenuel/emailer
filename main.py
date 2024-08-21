@@ -13,52 +13,62 @@ sender_email = os.getenv("EMAIL")
 password = os.getenv("PASSWORD")
 
 # Set up the SMTP server/connection
-server = smtplib.SMTP('smtp.gmail.com', 587)
-server.starttls()
-server.ehlo()
-server.login(sender_email, password)
+try:
+    with smtplib.SMTP('smtp.gmail.com', 587) as server:
+        server.starttls()
+        server.ehlo()
+        server.login(sender_email, password)
+        
+        def get_contacts(filename):
+            contacts_list = {}
+            with open(filename, mode='r', encoding='utf-8') as f: 
+                contacts = f.read().splitlines()  # Split lines instead of '\n'
+                if not contacts:  # If file is empty
+                    print('Contacts file is empty.')
+                    sys.exit()
+            for item in contacts:
+                if item.strip():  # Skip any empty lines
+                    parts = item.split(', ')
+                    if len(parts) < 2:
+                        print(f"Skipping invalid contact entry: {item}")
+                        continue
+                    contacts_list[parts[0]] = parts[1:]
+            return contacts_list
 
-def get_contacts(filename):
-    contacts_list = {}
-    with open(filename, mode='r', encoding='utf-8') as f: 
-        contacts = f.read().split('\n')
-        f.seek(0) #look at the beginning of the file. 
-        first = f.read() #read the beginning of the file.
-        if first == '': #if it's empty, there are no contacts, print error. 
-            print('Contacts file is empty.')
-            sys.exit() #exit the program
-    for item in contacts: 
-        contacts_list[item.split(', ')[0]] = item.split(', ')[1:]
-    return contacts_list
+        def read_message(filename):
+            with open(filename, mode='r', encoding='utf-8') as template:
+                template_content = template.read() # Read the file contents
+                if not template_content.strip():  # If template is empty
+                    print('Template file is empty.')
+                    sys.exit()
+                subject = template_content.splitlines()[0].rstrip()
+                return subject, '\n'.join(template_content.split('\n')[1:])
+        
+        # Main logic
+        if __name__ == "__main__":
+            contacts = get_contacts('contacts.txt')
+            subject, template_content = read_message('message.txt')
+            print(contacts)
+            print(subject, template_content)
+            
+            for contact_mail in contacts:
+                msg = MIMEMultipart()
+                contact_details = tuple(contacts[contact_mail])
 
-def read_message(filename):
-    with open(filename, mode='r', encoding='utf-8') as template:
-        template_content = template.read() #read the contents in the file to a variable
-        template.seek(0) #Look at the beginning of the file 
-        if template_content == '': # if template is empty. 
-            print('Template file is empty.')
-            sys.exit() #exit the program.
-        subject = template_content.splitlines()[0].rstrip()
-        return subject, '\n'.join(template_content.split('\n')[1:])
+                try:
+                    msg_body = template_content.format(*contact_details)
+                except IndexError:
+                    print(f"Error: Not enough data provided for {contact_mail}. Skipping...")
+                    continue
 
-# Main logic
-if __name__ == "__main__":
-    contacts = get_contacts('contacts.txt')
-    subject, template_content = read_message('message.txt')
-    print(contacts)
-    print(subject, template_content)
+                msg['From'] = sender_email
+                msg['To'] = contact_mail
+                msg['Subject'] = subject
 
-    for contact_mail in list(contacts):
-        msg = MIMEMultipart()
-        msg_body = template_content.format(*tuple(contacts[contact_mail]))
+                msg.attach(MIMEText(msg_body, 'plain'))
+                print(f"Sending email to {contact_mail}...")
+                server.sendmail(sender_email, contact_mail, msg.as_string())
+                print("Sent Successfully!")
 
-        msg['From'] = sender_email
-        msg['To'] = contact_mail
-        msg['Subject'] = subject
-
-        msg.attach(MIMEText(msg_body, 'plain'))
-        print(msg)
-        server.sendmail(sender_email, contact_mail, msg.as_string())
-        print("Sent Successfully!")
-
-    server.quit()
+except smtplib.SMTPException as e:
+    print(f"Failed to send email: {e}")

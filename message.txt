@@ -1,0 +1,8 @@
+Special Offer Just for You!
+
+Hi {0},
+
+We’re excited to offer you a special discount on our products. Use the code {1} at checkout to get 20% off your next purchase.
+
+Cheers,
+Your Favorite Store

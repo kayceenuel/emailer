@@ -1,1 +1,3 @@
-bobsmith@johndoe.com, Bob
+bobsmith@johndoe.com, Bob, SAVE20
+janedoe@example.com, Jane, WELCOME15
+alicewonder@domain.com, Alice, SUMMER21
